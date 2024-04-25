@@ -16,4 +16,6 @@ typedef uint64_t u64;
 
 #define BETWEEN(a, b, c) ((a >= b) && (a <= c))
 
+#define NO_IMPL { printf("No implementation\n"); exit(-5); }
+
 void delay(u32 ms);
