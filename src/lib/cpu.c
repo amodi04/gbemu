@@ -6,21 +6,21 @@ cpu_context ctx = {0};
 
 void cpu_init() {
     ctx.regs.pc = 0x100;
+    ctx.regs.a = 0x01;
 }
 
 static void fetch_instruction() {
     ctx.curr_opcode = bus_read(ctx.regs.pc++);
     ctx.curr_instr = instruction_by_opcode(ctx.curr_opcode);
-
-    if (ctx.curr_instr == NULL) {
-        printf("Unknown instruction: 0x%02X\n", ctx.curr_opcode);
-        exit(-7);
-    }
 }
 
 static void fetch_data() {
     ctx.mem_dest = 0;
     ctx.dest_is_mem = false;
+
+    if (ctx.curr_instr == NULL) {
+        return;
+    }
 
     switch(ctx.curr_instr->mode) {
         case AM_IMP:
@@ -46,14 +46,20 @@ static void fetch_data() {
         }
 
         default:
-            printf("Unknown addressing mode%d\n", ctx.curr_instr->mode);
+            printf("Unknown Addressing Mode! %d (%02X)\n", ctx.curr_instr->mode, ctx.curr_opcode);
             exit(-7);
             return;
     }
 }
 
 static void execute() {
-    printf("\tNot executing yet\n");
+    IN_PROC proc = inst_get_processor(ctx.curr_instr->type);
+
+    if (!proc) {
+        NO_IMPL
+    }
+
+    proc(&ctx);
 }
 
 bool cpu_step() {
@@ -63,7 +69,23 @@ bool cpu_step() {
         u16 pc = ctx.regs.pc;
         fetch_instruction();
         fetch_data();
-        printf("Executing instruction: 0x%02X    PC: %04X\n", ctx.curr_opcode, pc);
+
+        printf("%04X: %-7s (%02X %02X %02X) A: %02X B: %02X C: %02X\n",
+            pc,
+            inst_name(ctx.curr_instr->type),
+            ctx.curr_opcode,
+            bus_read(pc + 1),
+            bus_read(pc + 2),
+            ctx.regs.a,
+            ctx.regs.b,
+            ctx.regs.c
+        );
+
+        if (ctx.curr_instr == NULL) {
+            printf("Unknown intruction! %02X\n", ctx.curr_opcode);
+            exit(-7);
+        }
+
         execute();
     }
 
