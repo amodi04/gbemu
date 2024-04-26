@@ -1,14 +1,17 @@
 #include <cart.h>
 
+// Cartridge context
 typedef struct {
-    char filename[1024];
-    u32 rom_size;
-    u8 *rom_data;
-    rom_header *header;
+    char filename[1024]; // Filename of the cartridge
+    u32 rom_size;        // Size of the ROM
+    u8 *rom_data;        // Pointer to the ROM data
+    rom_header *header;  // Pointer to cartridge header
 } cart_context;
 
+// Global cartridge context
 static cart_context ctx;
 
+// ROM types
 static const char *ROM_TYPES[] = {
     "ROM ONLY",
     "MBC1",
@@ -47,6 +50,7 @@ static const char *ROM_TYPES[] = {
     "MBC7+SENSOR+RUMBLE+RAM+BATTERY",
 };
 
+// New Licensee Codes
 static const char *LIC_CODE[0xA5] = {
     [0x00] = "None",
     [0x01] = "Nintendo R&D1",
@@ -111,7 +115,9 @@ static const char *LIC_CODE[0xA5] = {
     [0xA4] = "Konami (Yu-Gi-Oh!)"
 };
 
+// Get the name of the cartridge licensee
 const char *cart_lic_name() {
+    // Only valid up to 0xA4
     if (ctx.header->new_lic_code <= 0xA4) {
         return LIC_CODE[ctx.header->lic_code];
     }
@@ -119,7 +125,9 @@ const char *cart_lic_name() {
     return "UNKNOWN";
 }
 
+// Get the name of the cartridge type
 const char *cart_type_name() {
+    // Only valid up to 0x22
     if (ctx.header->type <= 0x22) {
         return ROM_TYPES[ctx.header->type];
     }
@@ -148,6 +156,7 @@ bool cart_load(char *cart) {
     fread(ctx.rom_data, ctx.rom_size, 1, fp);
     fclose(fp);
 
+    // Header starts at 0x100
     ctx.header = (rom_header *)(ctx.rom_data + 0x100);
     ctx.header->title[15] = 0;
 
@@ -159,6 +168,7 @@ bool cart_load(char *cart) {
     printf("\t LIC Code : %2.2X (%s)\n", ctx.header->lic_code, cart_lic_name());
     printf("\t ROM Vers : %2.2X\n", ctx.header->version);
 
+    // Check the header checksum
     u16 x = 0;
     for (u16 i=0x0134; i<=0x014C; i++) {
         x = x - ctx.rom_data[i] - 1;

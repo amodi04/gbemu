@@ -2,6 +2,8 @@
 
 #include <common.h>
 
+// Defines the Gameboy cartridge interface and header structure
+// https://gbdev.io/pandocs/The_Cartridge_Header.html
 typedef struct {
     u8 entry[4];
     u8 logo[0x30];
@@ -19,7 +21,11 @@ typedef struct {
     u16 global_checksum;
 } rom_header;
 
+// True if the cartridge is loaded successfully
 bool cart_load(char *cart);
 
+// Reads a byte from the cartridge at the given address
 u8 cart_read(u16 address);
+
+// Writes a byte to the cartridge at the given address
 void cart_write(u16 address, u8 value);

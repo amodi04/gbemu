@@ -26,6 +26,7 @@ void delay(u32 ms) {
     SDL_Delay(ms);
 }
 
+
 int emu_run(int argc, char **argv) {
     if (argc < 2) {
         printf("Usage: emu <rom_file>\n");

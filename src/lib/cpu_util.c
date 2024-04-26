@@ -2,11 +2,13 @@
 
 extern cpu_context ctx;
 
+// Reverse a 16-bit value
 u16 reverse(u16 n) {
     // e.g. 0x1234 -> 0x3412
     return ((n & 0xFF00) >> 8) | ((n & 0x00FF) << 8);
 }
 
+// Reads the value of a register
 u16 cpu_read_reg(reg_type rt) {
     switch(rt) {
         case RT_A: return ctx.regs.a;
@@ -18,6 +20,7 @@ u16 cpu_read_reg(reg_type rt) {
         case RT_H: return ctx.regs.h;
         case RT_L: return ctx.regs.l;
 
+        // Register pairs need to be reversed because of endianness
         case RT_AF: return reverse(*((u16 *)&ctx.regs.a));
         case RT_BC: return reverse(*((u16 *)&ctx.regs.b));
         case RT_DE: return reverse(*((u16 *)&ctx.regs.d));

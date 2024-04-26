@@ -14,8 +14,8 @@
 // 0xFFFF: Interrupt Enable Register
 
 u8 bus_read(u16 address) {
+    // ROM banks located at 0x0000 - 0x7FFF
     if (address < 0x8000) {
-        // ROM Data
         return cart_read(address);
     }
 
@@ -23,8 +23,8 @@ u8 bus_read(u16 address) {
 }
 
 void bus_write(u16 address, u8 value) {
+    // ROM banks located at 0x0000 - 0x7FFF
     if (address < 0x8000) {
-        // ROM Data
         cart_write(address, value);
         return;
     }

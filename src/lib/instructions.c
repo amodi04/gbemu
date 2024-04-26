@@ -20,6 +20,7 @@ instruction *instruction_by_opcode(u8 opcode) {
     return &instructions[opcode];
 }
 
+// Lookup table for instruction names
 char *inst_lookup[] = {
     "<NONE>",
     "NOP",
