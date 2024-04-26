@@ -13,20 +13,20 @@ typedef enum {
     AM_R,      // Register
     AM_R_D8,   // 8-bit immediate to Register
     AM_R_MR,   // Memory to Register
-    AM_R_HLI,  // Memory at HL, increment, to Register
-    AM_R_HLD,  // Memory at HL, decrement, to Register
+    AM_R_HLI,  // Memory at HL to Register, increment
+    AM_R_HLD,  // Memory at HL to Register, decrement
     AM_HLI_R,  // Register to Memory at HL, increment
     AM_HLD_R,  // Register to Memory at HL, decrement
-    AM_R_A8,   // Memory at 0xFF00 + 8-bit immediate to Register
-    AM_A8_R,   // Register to Memory at 0xFF00 + 8-bit immediate
+    AM_R_A8,   // 8-bit unsigned address to Register
+    AM_A8_R,   // Register to 8-bit unsigned address 
     AM_HL_SPR, // Stack Pointer location to HL
     AM_D16,    // 16-bit immediate
     AM_D8,     // 8-bit immediate
     AM_D16_R,  // Register to 16-bit immediate 
     AM_MR_D8,  // 8-bit immediate to Memory
     AM_MR,     // Memory
-    AM_A16_R,  // Register to Memory at 16-bit immediate
-    AM_R_A16   // Memory at 16-bit immediate to Register
+    AM_A16_R,  // Register to 16-bit unsigned address
+    AM_R_A16   // 16-bit unsigned address to Register
 } addr_mode;
 
 // Register types
@@ -49,6 +49,7 @@ typedef enum {
 } reg_type;
 
 // Instruction types
+// https://www.pastraiser.com/cpu/gameboy/gameboy_opcodes.html
 typedef enum {
     IN_NONE,  // No instruction
     IN_NOP,   // No operation

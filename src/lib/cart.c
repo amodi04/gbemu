@@ -186,5 +186,6 @@ u8 cart_read(u16 address) {
 
 void cart_write(u16 address, u8 value) {
     // For now ROM only type supported so no write
-    return;
+    printf("cart_write(0x%04X, 0x%02X)\n", address, value);
+    NO_IMPL;
 }

@@ -11,6 +11,7 @@ u16 reverse(u16 n) {
 // Reads the value of a register
 u16 cpu_read_reg(reg_type rt) {
     switch(rt) {
+        // 8-bit register cases
         case RT_A: return ctx.regs.a;
         case RT_F: return ctx.regs.f;
         case RT_B: return ctx.regs.b;
@@ -20,7 +21,7 @@ u16 cpu_read_reg(reg_type rt) {
         case RT_H: return ctx.regs.h;
         case RT_L: return ctx.regs.l;
 
-        // Register pairs need to be reversed because of endianness
+        // Register pairs reversed because of endianness
         case RT_AF: return reverse(*((u16 *)&ctx.regs.a));
         case RT_BC: return reverse(*((u16 *)&ctx.regs.b));
         case RT_DE: return reverse(*((u16 *)&ctx.regs.d));
@@ -29,5 +30,29 @@ u16 cpu_read_reg(reg_type rt) {
         case RT_SP: return ctx.regs.sp;
         case RT_PC: return ctx.regs.pc;
         default: return 0;
+    }
+}
+
+void cpu_set_reg(reg_type rt, u16 val) {
+    switch(rt) {
+        // 8-bit register cases.
+        // & 0xFF to ensure only 8-bits are set
+        case RT_A: ctx.regs.a = val & 0xFF; break;
+        case RT_F: ctx.regs.f = val & 0xFF; break;
+        case RT_B: ctx.regs.b = val & 0xFF; break;
+        case RT_C: ctx.regs.c = val & 0xFF; break;
+        case RT_D: ctx.regs.d = val & 0xFF; break;
+        case RT_E: ctx.regs.e = val & 0xFF; break;
+        case RT_H: ctx.regs.h = val & 0xFF; break;
+        case RT_L: ctx.regs.l = val & 0xFF; break;
+
+        // Register pairs reversed because of endianness
+        case RT_AF: *((u16 *)&ctx.regs.a) = reverse(val); break;
+        case RT_BC: *((u16 *)&ctx.regs.b) = reverse(val); break;
+        case RT_DE: *((u16 *)&ctx.regs.d) = reverse(val); break;
+        case RT_HL: *((u16 *)&ctx.regs.h) = reverse(val); break;
+
+        case RT_SP: ctx.regs.sp = val; break;
+        case RT_PC: ctx.regs.pc = val; break;
     }
 }

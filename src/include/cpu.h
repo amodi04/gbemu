@@ -56,3 +56,6 @@ IN_PROC inst_get_processor(in_type type);
 
 // Returns the value of the given register
 u16 cpu_read_reg(reg_type rt);
+
+// Sets the value of the given register
+void cpu_set_reg(reg_type rt, u16 val);

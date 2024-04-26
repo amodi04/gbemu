@@ -1,7 +1,31 @@
 #include <cpu.h>
 #include <emu.h>
+#include <bus.h>
 
 // Processes CPU instructions
+
+// Set flags in F
+void cpu_set_flags(cpu_context *ctx, char z, char n, char h, char c) {
+    // Set zero flag
+    if (z != -1) {
+        BIT_SET(ctx->regs.f, 7, z);
+    }
+
+    // Set subtraction flag
+    if (n != -1) {
+        BIT_SET(ctx->regs.f, 6, n);
+    }
+
+    // Set half carry flag
+    if (h != -1) {
+        BIT_SET(ctx->regs.f, 5, h);
+    }
+
+    // Set carry flag
+    if (c != -1) {
+        BIT_SET(ctx->regs.f, 4, c);
+    }
+}
 
 // Invalid instruction
 static void proc_none(cpu_context *ctx) {
@@ -16,7 +40,37 @@ static void proc_nop(cpu_context *ctx) {
 
 // Load instruction
 static void proc_ld(cpu_context *ctx) {
-    // TODO: Implement
+    if (ctx->dest_is_mem) {
+        // LD (BC), A
+
+        // If 16-bit register
+        if (ctx->curr_instr->reg_2 >= RT_AF) {
+            emu_cycles(1);
+            bus_write16(ctx->mem_dest, ctx->fetched_data);
+        } else {
+            bus_write(ctx->mem_dest, ctx->fetched_data);
+        }
+        return;
+    }
+
+    // Load stack pointer + 8-bit immediate into memory
+    if (ctx->curr_instr->mode == AM_HL_SPR) {
+        // Check if H flag should be set
+        u8 hflag = (cpu_read_reg(ctx->curr_instr->reg_2) & 0xF) + 
+            (ctx->fetched_data & 0xF) >= 0x10;
+
+        // Check if C flag should be set
+        u8 cflag = (cpu_read_reg(ctx->curr_instr->reg_2) & 0xFF) + 
+            (ctx->fetched_data & 0xFF) >= 0x100;
+
+        cpu_set_flags(ctx, 0, 0, hflag, cflag);
+        cpu_set_reg(ctx->curr_instr->reg_1, 
+            cpu_read_reg(ctx->curr_instr->reg_2) + (char)ctx->fetched_data);
+
+        return;
+    }
+
+    cpu_set_reg(ctx->curr_instr->reg_1, ctx->fetched_data);
 }
 
 // Check condition of set flags
@@ -47,29 +101,6 @@ static void proc_jp(cpu_context *ctx) {
 // Disable interrupts
 static void proc_di(cpu_context *ctx) {
     ctx->interrupt_master_enabled = false;
-}
-
-// Set flags in F
-void cpu_set_flags(cpu_context *ctx, char z, char n, char h, char c) {
-    // Set zero flag
-    if (z != -1) {
-        BIT_SET(ctx->regs.f, 7, z);
-    }
-
-    // Set subtraction flag
-    if (n != -1) {
-        BIT_SET(ctx->regs.f, 6, n);
-    }
-
-    // Set half carry flag
-    if (h != -1) {
-        BIT_SET(ctx->regs.f, 5, h);
-    }
-
-    // Set carry flag
-    if (c != -1) {
-        BIT_SET(ctx->regs.f, 4, c);
-    }
 }
 
 // XOR instruction

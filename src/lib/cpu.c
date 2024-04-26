@@ -19,49 +19,7 @@ static void fetch_instruction() {
     ctx.curr_instr = instruction_by_opcode(ctx.curr_opcode);
 }
 
-// Fetches the data for the current instruction
-static void fetch_data() {
-    // Reset the memory destination
-    ctx.mem_dest = 0;
-    ctx.dest_is_mem = false;
-
-    if (ctx.curr_instr == NULL) {
-        return;
-    }
-
-    switch(ctx.curr_instr->mode) {
-        case AM_IMP:
-            return;
-        case AM_R:
-            // Get data in first register
-            ctx.fetched_data = cpu_read_reg(ctx.curr_instr->reg_1);
-            return;
-        case AM_R_D8:
-            // Get data in program counter
-            ctx.fetched_data = bus_read(ctx.regs.pc);
-            emu_cycles(1);
-            ctx.regs.pc++;
-            return;
-        case AM_D16: {
-            // Reading 16-bit data so two cycles needed
-            u16 lo = bus_read(ctx.regs.pc);
-            emu_cycles(1);
-            u16 hi = bus_read(ctx.regs.pc + 1);
-            emu_cycles(1);
-
-            // Combine the data
-            ctx.fetched_data = lo | (hi << 8);
-            ctx.regs.pc += 2;
-
-            return;
-        }
-
-        default:
-            printf("Unknown Addressing Mode! %d (%02X)\n", ctx.curr_instr->mode, ctx.curr_opcode);
-            exit(-7);
-            return;
-    }
-}
+void fetch_data();
 
 // Execute the current instruction
 static void execute() {
