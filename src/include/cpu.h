@@ -32,6 +32,7 @@ typedef struct {
     bool stepping;
 
     bool interrupt_master_enabled;
+    u8 ie_register;
 
 } cpu_context;
 
@@ -59,3 +60,9 @@ u16 cpu_read_reg(reg_type rt);
 
 // Sets the value of the given register
 void cpu_set_reg(reg_type rt, u16 val);
+
+// Gets the interrupt enable register
+u8 cpu_get_ie_register();
+
+// Sets the interrupt enable register
+void cpu_set_ie_register(u8 n);
