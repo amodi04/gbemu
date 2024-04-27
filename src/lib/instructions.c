@@ -2,6 +2,27 @@
 #include <cpu.h>
 
 // https://www.pastraiser.com/cpu/gameboy/gameboy_opcodes.html
+/*
+|     | 0         | 1         | 2          | 3         | 4          | 5         | 6          | 7         | 8          | 9         | A          | B         | C         | D       | E          | F       |
+|-----|-----------|-----------|------------|-----------|------------|-----------|------------|-----------|------------|-----------|------------|-----------|-----------|---------|------------|---------|
+| 0x0 | NOP       | LD BC,nn  | LD (BC),A  | INC BC    | INC B      | DEC B     | LD B,n     | RLCA      | LD nn,SP   | ADD HL,BC | LD A,(BC)  | DEC BC    | INC C     | DEC C   | LD C,n     | RRCA    |
+| 0x1 | STOP      | LD DE,nn  | LD (DE),A  | INC DE    | INC D      | DEC D     | LD D,n     | RLA       | JR n       | ADD HL,DE | LD A,(DE)  | DEC DE    | INC E     | DEC E   | LD E,n     | RRA     |
+| 0x2 | JR NZ,n   | LD HL,nn  | LD (HL+),A | INC HL    | INC H      | DEC H     | LD H,n     | DAA       | JR Z,n     | ADD HL,HL | LD A,(HL+) | DEC HL    | INC L     | DEC L   | LD L,n     | CPL     |
+| 0x3 | JR NC,n   | LD SP,nn  | LD (HL-),A | INC SP    | INC (HL)   | DEC (HL)  | LD (HL),n  | SCF       | JR C,n     | ADD HL,SP | LD A,(HL-) | DEC SP    | INC A     | DEC A   | LD A,n     | CCF     |
+| 0x4 | LD B,B    | LD B,C    | LD B,D     | LD B,E    | LD B,H     | LD B,L    | LD B,(HL)  | LD B,A    | LD C,B     | LD C,C    | LD C,D     | LD C,E    | LD C,H    | LD C,L  | LD C,(HL)  | LD C,A  |
+| 0x5 | LD D,B    | LD D,C    | LD D,D     | LD D,E    | LD D,H     | LD D,L    | LD D,(HL)  | LD D,A    | LD E,B     | LD E,C    | LD E,D     | LD E,E    | LD E,H    | LD E,L  | LD E,(HL)  | LD E,A  |
+| 0x6 | LD H,B    | LD H,C    | LD H,D     | LD H,E    | LD H,H     | LD H,L    | LD H,(HL)  | LD H,A    | LD L,B     | LD L,C    | LD L,D     | LD L,E    | LD L,H    | LD L,L  | LD L,(HL)  | LD L,A  |
+| 0x7 | LD (HL),B | LD (HL),C | LD (HL),D  | LD (HL),E | LD (HL),H  | LD (HL),L | HALT       | LD (HL),A | LD A,B     | LD A,C    | LD A,D     | LD A,E    | LD A,H    | LD A,L  | LD A,(HL)  | LD A,A  |
+| 0x8 | ADD A,B   | ADD A,C   | ADD A,D    | ADD A,E   | ADD A,H    | ADD A,L   | ADD A,(HL) | ADD A,A   | ADC A,B    | ADC A,C   | ADC A,D    | ADC A,E   | ADC A,H   | ADC A,L | ADC A,(HL) | ADC A,A |
+| 0x9 | SUB B     | SUB C     | SUB D      | SUB E     | SUB H      | SUB L     | SUB (HL)   | SUB A     | SBC A,B    | SBC A,C   | SBC A,D    | SBC A,E   | SBC A,H   | SBC A,L | SBC A,(HL) | SBC A,A |
+| 0xA | AND B     | AND C     | AND D      | AND E     | AND H      | AND L     | AND (HL)   | AND A     | XOR B      | XOR C     | XOR D      | XOR E     | XOR H     | XOR L   | XOR (HL)   | XOR A   |
+| 0xB | OR B      | OR C      | OR D       | OR E      | OR H       | OR L      | OR (HL)    | OR A      | CP B       | CP C      | CP D       | CP E      | CP H      | CP L    | CP (HL)    | CP A    |
+| 0xC | RET NZ    | POP BC    | JP NZ,nn   | JP nn     | CALL NZ,nn | PUSH BC   | ADD A,n    | RST 00H   | RET Z      | RET       | JP Z,nn    | PREFIX CB | CALL Z,nn | CALL nn | ADC A,n    | RST 08H |
+| 0xD | RET NC    | POP DE    | JP NC,nn   | -         | CALL NC,nn | PUSH DE   | SUB n      | RST 10H   | RET C      | RETI      | JP C,nn    | -         | CALL C,nn | -       | SBC A,n    | RST 18H |
+| 0xE | LDH (n),A | POP HL    | LD (C),A   | -         | -          | PUSH HL   | AND n      | RST 20H   | ADD SP,n   | JP (HL)   | LD (nn),A  | -         | -         | -       | XOR n      | RST 28H |
+| 0xF | LDH A,(n) | POP AF    | LD A,(C)   | DI        | -          | PUSH AF   | OR n       | RST 30H   | LD HL,SP+n | LD SP,HL  | LD A,(nn)  | EI        | -         | -       | CP n       | RST 38H |
+*/
+
 instruction instructions[0x100] = {
     [0x00] = {IN_NOP, AM_IMP},
     [0x01] = {IN_LD, AM_R_D16, RT_BC},

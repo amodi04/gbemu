@@ -4,7 +4,7 @@
 
 // Processes CPU instructions
 
-// Set flags in F
+// Set flags in F register
 void cpu_set_flags(cpu_context *ctx, char z, char n, char h, char c) {
     // Set zero flag
     if (z != -1) {
@@ -73,6 +73,17 @@ static void proc_ld(cpu_context *ctx) {
     cpu_set_reg(ctx->curr_instr->reg_1, ctx->fetched_data);
 }
 
+// Load into hram
+static void proc_ldh(cpu_context *ctx) {
+    if (ctx->curr_instr->reg_1 == RT_A) {
+        // Set A to value at address hram
+        cpu_set_reg(ctx->curr_instr->reg_1, bus_read(0xFF00 | ctx->fetched_data));
+    } else {
+        // Set value at address hram to A
+        bus_write(0xFF00 | ctx->fetched_data, ctx->regs.a);
+    }
+}
+
 // Check condition of set flags
 static bool check_cond(cpu_context *ctx) {
     bool z = CPU_FLAG_Z;
@@ -107,17 +118,6 @@ static void proc_di(cpu_context *ctx) {
 static void proc_xor(cpu_context *ctx) {
     ctx->regs.a ^= ctx->fetched_data & 0xFF;
     cpu_set_flags(ctx, ctx->regs.a == 0, 0, 0, 0);
-}
-
-// Load into hram
-static void proc_ldh(cpu_context *ctx) {
-    if (ctx->curr_instr->reg_1 == RT_A) {
-        // Set A to value at address hram
-        cpu_set_reg(ctx->curr_instr->reg_1, bus_read(0xFF00 | ctx->fetched_data));
-    } else {
-        // Set value at address hram to A
-        bus_write(0xFF00 | ctx->fetched_data, ctx->regs.a);
-    }
 }
 
 // Processor lookup table
