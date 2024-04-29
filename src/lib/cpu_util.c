@@ -56,3 +56,7 @@ void cpu_set_reg(reg_type rt, u16 val) {
         case RT_PC: ctx.regs.pc = val; break;
     }
 }
+
+cpu_registers *cpu_get_regs() {
+    return &ctx.regs;
+}

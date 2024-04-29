@@ -1,6 +1,7 @@
 #include <cpu.h>
 #include <emu.h>
 #include <bus.h>
+#include <stack.h>
 
 // Processes CPU instructions
 
@@ -50,6 +51,7 @@ static void proc_ld(cpu_context *ctx) {
         } else {
             bus_write(ctx->mem_dest, ctx->fetched_data);
         }
+        emu_cycles(1);
         return;
     }
 
@@ -82,6 +84,8 @@ static void proc_ldh(cpu_context *ctx) {
         // Set value at address hram to A
         bus_write(0xFF00 | ctx->fetched_data, ctx->regs.a);
     }
+
+    emu_cycles(1);
 }
 
 // Check condition of set flags
@@ -100,13 +104,96 @@ static bool check_cond(cpu_context *ctx) {
     return false;
 }
 
-// Jump instruction
-static void proc_jp(cpu_context *ctx) {
+// Goto address
+static void goto_addr(cpu_context *ctx, u16 addr, bool pushpc) {
     // Check condition used for conditional jumps
     if (check_cond(ctx)) {
-        ctx->regs.pc = ctx->fetched_data;
+        if (pushpc) {
+            emu_cycles(2);
+            stack_push16(ctx->regs.pc);
+        }
+        ctx->regs.pc = addr;
         emu_cycles(1);
     }
+}
+
+// Jump instruction
+static void proc_jp(cpu_context *ctx) {
+    goto_addr(ctx, ctx->fetched_data, false);
+}
+
+// Jump relative instruction (add immediate to PC)
+static void proc_jr(cpu_context *ctx) {
+    // Relative address could be pos or neg
+    char rel = (char)(ctx->fetched_data & 0xFF);
+    u16 addr = ctx->regs.pc + rel;
+    goto_addr(ctx, addr, false);
+}
+
+
+// Call instruction (push PC to stack, jump to immediate address)
+static void proc_call(cpu_context *ctx) {
+    goto_addr(ctx, ctx->fetched_data, true);
+}
+
+// RST instruction (push PC to stack, jump to immediate address)
+static void proc_rst(cpu_context *ctx) {
+    goto_addr(ctx, ctx->curr_instr->param, true);
+}
+
+// Ret instruction (opposite of call)
+static void proc_ret(cpu_context *ctx) {
+    if (ctx->curr_instr->cond != CT_NONE) {
+        emu_cycles(1);
+    }
+
+    if (check_cond(ctx)) {
+        u16 lo = stack_pop();
+        emu_cycles(1);
+        u16 hi = stack_pop();
+        emu_cycles(1);
+
+        u16 n = (hi << 8) | lo;
+        ctx->regs.pc = n;
+
+        emu_cycles(1);
+    }
+}
+
+// Return from interrupt
+static void proc_reti(cpu_context *ctx) {
+    ctx->interrupt_master_enabled = true;
+    proc_ret(ctx);
+}
+
+// Pop from stack
+static void proc_pop(cpu_context *ctx) {
+    u16 lo = stack_pop();
+    emu_cycles(1);
+    u16 hi = stack_pop();
+    emu_cycles(1);
+
+    u16 n = (hi << 8) | lo;
+
+    cpu_set_reg(ctx->curr_instr->reg_1, n);
+
+    if (ctx->curr_instr->reg_1 == RT_AF) {
+        // Mask out lower 4 bits because they are reserved for flags
+        cpu_set_reg(ctx->curr_instr->reg_1, n & 0xFFF0);
+    }
+}
+
+// Push to stack
+static void proc_push(cpu_context *ctx) {
+    u16 hi = (cpu_read_reg(ctx->curr_instr->reg_1) >> 8) & 0xFF;
+    emu_cycles(1);
+    stack_push(hi);
+
+    u16 lo = cpu_read_reg(ctx->curr_instr->reg_2) & 0xFF;
+    emu_cycles(1);
+    stack_push(lo);
+    
+    emu_cycles(1);
 }
 
 // Disable interrupts
@@ -121,14 +208,21 @@ static void proc_xor(cpu_context *ctx) {
 }
 
 // Processor lookup table
-IN_PROC processors[] = {
+static IN_PROC processors[] = {
     [IN_NONE] = proc_none,
     [IN_NOP] = proc_nop,
     [IN_LD] = proc_ld,
     [IN_LDH] = proc_ldh,
     [IN_JP] = proc_jp,
     [IN_DI] = proc_di,
-    [IN_XOR] = proc_xor,
+    [IN_POP] = proc_pop,
+    [IN_PUSH] = proc_push,
+    [IN_JR] = proc_jr,
+    [IN_CALL] = proc_call,
+    [IN_RET] = proc_ret,
+    [IN_RST] = proc_rst,
+    [IN_RETI] = proc_reti,
+    [IN_XOR] = proc_xor
 };
 
 // Get processor for instruction by type

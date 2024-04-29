@@ -77,7 +77,7 @@ typedef enum {
     IN_CP,    // Compare
     IN_POP,   // Pop from stack into register pair
     IN_JP,    // Jump
-    IN_PUSH,  // Push
+    IN_PUSH,  // Push to stack
     IN_RET,   // Pop from stack into PC
     IN_CB,    // Bitwise operations
     IN_CALL,  // Call (push PC to stack, jump to immediate address)

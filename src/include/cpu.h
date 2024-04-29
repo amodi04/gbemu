@@ -66,3 +66,6 @@ u8 cpu_get_ie_register();
 
 // Sets the interrupt enable register
 void cpu_set_ie_register(u8 n);
+
+// Gets the registers
+cpu_registers *cpu_get_regs();
