@@ -15,15 +15,14 @@ void fetch_data() {
     }
 
     switch(ctx.curr_instr->mode) {
-        case AM_IMP:
-            return;
+        case AM_IMP: return;
         case AM_R:
             ctx.fetched_data = cpu_read_reg(ctx.curr_instr->reg_1);
             return;
 
         case AM_R_R:
             ctx.fetched_data = cpu_read_reg(ctx.curr_instr->reg_2);
-
+            return;
         case AM_R_D8:
             ctx.fetched_data = bus_read(ctx.regs.pc);
             emu_cycles(1);

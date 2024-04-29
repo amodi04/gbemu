@@ -39,20 +39,24 @@ bool cpu_step() {
     if(!ctx.halted) {
         u16 pc = ctx.regs.pc;
         fetch_instruction();
+        emu_cycles(1);
         fetch_data();
 
         // Debug info
-        printf("%04X: %-7s (%02X %02X %02X) A: %02X BC: %02X%02X DE: %02X%02X HL: %02X%02X\n",
-            pc,
-            inst_name(ctx.curr_instr->type),
-            ctx.curr_opcode,
-            bus_read(pc + 1), // Next address
-            bus_read(pc + 2), // Next address
-            ctx.regs.a,
-            ctx.regs.b, ctx.regs.c,
-            ctx.regs.d, ctx.regs.e,
-            ctx.regs.h, ctx.regs.l
+        char flags[16];
+        sprintf(flags, "%c%c%c%c", 
+            ctx.regs.f & (1 << 7) ? 'Z' : '-',
+            ctx.regs.f & (1 << 6) ? 'N' : '-',
+            ctx.regs.f & (1 << 5) ? 'H' : '-',
+            ctx.regs.f & (1 << 4) ? 'C' : '-'
         );
+
+        printf("%08lX - %04X: %-7s (%02X %02X %02X) A: %02X F: %s BC: %02X%02X DE: %02X%02X HL: %02X%02X\n", 
+            emu_get_context()->ticks,
+            pc, inst_name(ctx.curr_instr->type), ctx.curr_opcode,
+            bus_read(pc + 1), bus_read(pc + 2), ctx.regs.a, flags, ctx.regs.b, ctx.regs.c,
+            ctx.regs.d, ctx.regs.e, ctx.regs.h, ctx.regs.l);
+
 
         if (ctx.curr_instr == NULL) {
             printf("Unknown intruction! %02X\n", ctx.curr_opcode);

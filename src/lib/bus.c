@@ -50,10 +50,9 @@ u8 bus_read(u16 address) {
     } else if (address == 0xFFFF) {
         // CPU Interrupt Enable Register
         return cpu_get_ie_register();
-    } else {
-        // High RAM
-        return hram_read(address);
     }
+    
+    return hram_read(address);
 }
 
 void bus_write(u16 address, u8 value) {
@@ -64,7 +63,7 @@ void bus_write(u16 address, u8 value) {
         // Char/Map Data
         // TODO
         printf("Unsupported bus_write(0x%04X, 0x%02X)\n", address, value);
-        // NO_IMPL
+        NO_IMPL
     } else if (address < 0xC000) {
         // Cartridge RAM
         cart_write(address, value);
@@ -77,7 +76,7 @@ void bus_write(u16 address, u8 value) {
         // OAM
         // TODO
         printf("Unsupported bus_write(0x%04X, 0x%02X)\n", address, value);
-        // NO_IMPL
+        NO_IMPL
     } else if (address < 0xFF00) {
         // Not Usable
     } else if (address < 0xFF80) {
