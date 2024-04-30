@@ -61,6 +61,12 @@ u16 cpu_read_reg(reg_type rt);
 // Sets the value of the given register
 void cpu_set_reg(reg_type rt, u16 val);
 
+// Returns the value of the given 8-bit register
+u8 cpu_read_reg8(reg_type rt);
+
+// Sets the value of the given 8-bit register
+void cpu_set_reg8(reg_type rt, u8 val);
+
 // Gets the interrupt enable register
 u8 cpu_get_ie_register();
 

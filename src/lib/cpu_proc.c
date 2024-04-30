@@ -1,6 +1,6 @@
+#include <bus.h>
 #include <cpu.h>
 #include <emu.h>
-#include <bus.h>
 #include <stack.h>
 
 // Processes CPU instructions
@@ -39,6 +39,184 @@ static void proc_nop(cpu_context *ctx) {
     // Do nothing
 }
 
+// Ordered by how the logical operations are stored in the instruction set
+reg_type rt_lookup[] = {
+    RT_B,
+    RT_C,
+    RT_D,
+    RT_E,
+    RT_H,
+    RT_L,
+    RT_HL,
+    RT_A};
+
+// Decode register from bits
+reg_type decode_reg(u8 reg) {
+    // Only 3 bits are used for register
+    if (reg > 0b111) {
+        return RT_NONE;
+    }
+
+    return rt_lookup[reg];
+}
+
+// Process CB (bitwise) instructions
+// Instruction are now identified by a prefix byte
+static void proc_cb(cpu_context *ctx) {
+    u8 op = ctx->fetched_data;
+    reg_type reg = decode_reg(op & 0b111);
+    // Get bit to operate on
+    u8 bit = (op >> 3) & 0b111;
+
+    // Get bit operation
+    u8 bit_op = (op >> 6) & 0b11;
+
+    // Get register value
+    u8 reg_val = cpu_read_reg8(reg);
+
+    emu_cycles(1);
+
+    if (reg == RT_HL) {
+        emu_cycles(2);
+    }
+
+    switch (bit_op) {
+    // BIT
+    case 1:
+        // Set flags depending on bit value
+        cpu_set_flags(ctx, !(reg_val & (1 << bit)), 0, 1, -1);
+        return;
+    // RES
+    case 2:
+        // This resets the bit to 0
+        reg_val &= ~(1 << bit);
+        cpu_set_reg8(reg, reg_val);
+        return;
+    // SET
+    case 3:
+        // This sets the bit to 1
+        reg_val |= (1 << bit);
+        cpu_set_reg8(reg, reg_val);
+        return;
+    }
+
+    // RLC, RRC, RL, RR, SLA, SRA, SWAP, SRL operations
+    bool flagC = CPU_FLAG_C;
+
+    switch (bit) {
+    case 0: {
+        // RLC
+        bool setC = false;
+        u8 result = (reg_val << 1) & 0xFF;
+
+        if ((reg_val & (1 << 7)) != 0) {
+            result |= 1;
+            setC = true;
+        }
+
+        cpu_set_reg8(reg, result);
+        cpu_set_flags(ctx, result == 0, false, false, setC);
+    }
+        return;
+
+    case 1: {
+        // RRC - Rotate right with carry
+        u8 old = reg_val;
+        reg_val >>= 1;
+        reg_val |= (old << 7);
+
+        cpu_set_reg8(reg, reg_val);
+        cpu_set_flags(ctx, !reg_val, false, false, old & 1);
+    }
+        return;
+
+    // RL - Rotate left
+    case 2: {
+        u8 old = reg_val;
+        reg_val <<= 1;
+        reg_val |= flagC;
+
+        cpu_set_reg8(reg, reg_val);
+        cpu_set_flags(ctx, !reg_val, false, false, !!(old & 0x80));
+    }
+        return;
+
+    // RR - Rotate right
+    case 3: {
+        u8 old = reg_val;
+        reg_val >>= 1;
+
+        reg_val |= (flagC << 7);
+
+        cpu_set_reg8(reg, reg_val);
+        cpu_set_flags(ctx, !reg_val, false, false, old & 1);
+    }
+        return;
+
+    // SLA - Shift left arithmetic
+    case 4: {
+        u8 old = reg_val;
+        reg_val <<= 1;
+
+        cpu_set_reg8(reg, reg_val);
+        cpu_set_flags(ctx, !reg_val, false, false, !!(old & 0x80));
+    }
+        return;
+
+    // SRA - Shift right arithmetic
+    case 5: {
+        u8 u = (int8_t)reg_val >> 1;
+        cpu_set_reg8(reg, u);
+        cpu_set_flags(ctx, !u, 0, 0, reg_val & 1);
+    }
+        return;
+
+    // SWAP - Swap nibbles
+    case 6: {
+        reg_val = ((reg_val & 0xF0) >> 4) | ((reg_val & 0xF) << 4);
+        cpu_set_reg8(reg, reg_val);
+        cpu_set_flags(ctx, reg_val == 0, false, false, false);
+    }
+        return;
+
+    // SRL - Shift right logical
+    case 7: {
+        u8 u = reg_val >> 1;
+        cpu_set_reg8(reg, u);
+        cpu_set_flags(ctx, !u, 0, 0, reg_val & 1);
+    }
+        return;
+    }
+
+    fprintf(stderr, "Unknown CB instruction: %02X\n", op);
+    NO_IMPL
+}
+
+// AND instruction
+static void proc_and(cpu_context *ctx) {
+    ctx->regs.a &= ctx->fetched_data & 0xFF;
+    cpu_set_flags(ctx, ctx->regs.a == 0, 0, 1, 0);
+}
+
+// XOR instruction
+static void proc_xor(cpu_context *ctx) {
+    ctx->regs.a ^= ctx->fetched_data & 0xFF;
+    cpu_set_flags(ctx, ctx->regs.a == 0, 0, 0, 0);
+}
+
+// OR instruction
+static void proc_or(cpu_context *ctx) {
+    ctx->regs.a |= ctx->fetched_data & 0xFF;
+    cpu_set_flags(ctx, ctx->regs.a == 0, 0, 0, 0);
+}
+
+static void proc_cp(cpu_context *ctx) {
+    int n = (int)ctx->regs.a - (int)ctx->fetched_data;
+
+    cpu_set_flags(ctx, n == 0, 1,
+                  ((int)ctx->regs.a & 0x0F) - ((int)ctx->fetched_data & 0xF) < 0, n < 0);
+}
+
 // Check if register is 16-bit
 static bool is_16_bit(reg_type rt) {
     return rt >= RT_AF;
@@ -63,16 +241,18 @@ static void proc_ld(cpu_context *ctx) {
     // Load stack pointer + 8-bit immediate into memory
     if (ctx->curr_instr->mode == AM_HL_SPR) {
         // Check if H flag should be set
-        u8 hflag = (cpu_read_reg(ctx->curr_instr->reg_2) & 0xF) + 
-            (ctx->fetched_data & 0xF) >= 0x10;
+        u8 hflag = (cpu_read_reg(ctx->curr_instr->reg_2) & 0xF) +
+                       (ctx->fetched_data & 0xF) >=
+                   0x10;
 
         // Check if C flag should be set
-        u8 cflag = (cpu_read_reg(ctx->curr_instr->reg_2) & 0xFF) + 
-            (ctx->fetched_data & 0xFF) >= 0x100;
+        u8 cflag = (cpu_read_reg(ctx->curr_instr->reg_2) & 0xFF) +
+                       (ctx->fetched_data & 0xFF) >=
+                   0x100;
 
         cpu_set_flags(ctx, 0, 0, hflag, cflag);
-        cpu_set_reg(ctx->curr_instr->reg_1, 
-            cpu_read_reg(ctx->curr_instr->reg_2) + (char)ctx->fetched_data);
+        cpu_set_reg(ctx->curr_instr->reg_1,
+                    cpu_read_reg(ctx->curr_instr->reg_2) + (char)ctx->fetched_data);
 
         return;
     }
@@ -99,13 +279,18 @@ static bool check_cond(cpu_context *ctx) {
     bool c = CPU_FLAG_C;
 
     switch (ctx->curr_instr->cond) {
-        case CT_NONE: return true;
-        case CT_C: return c;
-        case CT_NC: return !c;
-        case CT_Z: return z;
-        case CT_NZ: return !z;
+    case CT_NONE:
+        return true;
+    case CT_C:
+        return c;
+    case CT_NC:
+        return !c;
+    case CT_Z:
+        return z;
+    case CT_NZ:
+        return !z;
     }
-    
+
     return false;
 }
 
@@ -134,7 +319,6 @@ static void proc_jr(cpu_context *ctx) {
     u16 addr = ctx->regs.pc + rel;
     goto_addr(ctx, addr, false);
 }
-
 
 // Call instruction (push PC to stack, jump to immediate address)
 static void proc_call(cpu_context *ctx) {
@@ -197,19 +381,13 @@ static void proc_push(cpu_context *ctx) {
     u16 lo = cpu_read_reg(ctx->curr_instr->reg_2) & 0xFF;
     emu_cycles(1);
     stack_push(lo);
-    
+
     emu_cycles(1);
 }
 
 // Disable interrupts
 static void proc_di(cpu_context *ctx) {
     ctx->interrupt_master_enabled = false;
-}
-
-// XOR instruction
-static void proc_xor(cpu_context *ctx) {
-    ctx->regs.a ^= ctx->fetched_data & 0xFF;
-    cpu_set_flags(ctx, ctx->regs.a == 0, 0, 0, 0);
 }
 
 // Increment register
@@ -281,10 +459,8 @@ static void proc_sbc(cpu_context *ctx) {
 
     int z = cpu_read_reg(ctx->curr_instr->reg_1) - val == 0;
 
-    int h = ((int)cpu_read_reg(ctx->curr_instr->reg_1) & 0xF) 
-        - ((int)ctx->fetched_data & 0xF) - ((int)CPU_FLAG_C) < 0;
-    int c = ((int)cpu_read_reg(ctx->curr_instr->reg_1)) 
-        - ((int)ctx->fetched_data) - ((int)CPU_FLAG_C) < 0;
+    int h = ((int)cpu_read_reg(ctx->curr_instr->reg_1) & 0xF) - ((int)ctx->fetched_data & 0xF) - ((int)CPU_FLAG_C) < 0;
+    int c = ((int)cpu_read_reg(ctx->curr_instr->reg_1)) - ((int)ctx->fetched_data) - ((int)CPU_FLAG_C) < 0;
 
     cpu_set_reg(ctx->curr_instr->reg_1, cpu_read_reg(ctx->curr_instr->reg_1) - val);
     cpu_set_flags(ctx, z, 1, h, c);
@@ -317,7 +493,6 @@ static void proc_add(cpu_context *ctx) {
         val = cpu_read_reg(ctx->curr_instr->reg_1) + (char)ctx->fetched_data;
     }
 
-
     int z = (val & 0xFF) == 0;
     // Half carry if result is greater than a nibble
     int h = (cpu_read_reg(ctx->curr_instr->reg_1) & 0xF) + (ctx->fetched_data & 0xF) >= 0x10;
@@ -328,9 +503,11 @@ static void proc_add(cpu_context *ctx) {
     if (is_16bit) {
         // Z unchanged
         z = -1;
+
         // Half carry if result is greater than 3 nibbles
         h = (cpu_read_reg(ctx->curr_instr->reg_1) & 0xFFF) + (ctx->fetched_data & 0xFFF) >= 0x1000;
         u32 n = ((u32)cpu_read_reg(ctx->curr_instr->reg_1)) + ((u32)ctx->fetched_data);
+
         // Carry if result is greater than 16 bits
         c = n >= 0x10000;
     }
@@ -367,8 +544,12 @@ static IN_PROC processors[] = {
     [IN_ADC] = proc_adc,
     [IN_SUB] = proc_sub,
     [IN_SBC] = proc_sbc,
+    [IN_AND] = proc_and,
+    [IN_XOR] = proc_xor,
+    [IN_OR] = proc_or,
+    [IN_CP] = proc_cp,
+    [IN_CB] = proc_cb,
     [IN_RETI] = proc_reti,
-    [IN_XOR] = proc_xor
 };
 
 // Get processor for instruction by type
