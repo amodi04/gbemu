@@ -192,6 +192,101 @@ static void proc_cb(cpu_context *ctx) {
     NO_IMPL
 }
 
+// Rotate left through carry
+static void proc_rlca(cpu_context *ctx) {
+    u8 u = ctx->regs.a;
+
+    // Calculate if carry should be set
+    bool c = (u >> 7) & 1;
+    u = (u << 1) | c;
+    ctx->regs.a = u;
+
+    cpu_set_flags(ctx, u == 0, 0, 0, c);
+}
+
+// Rotate right through carry
+static void proc_rrca(cpu_context *ctx) {
+    u8 b = ctx->regs.a;
+    ctx->regs.a >>= 1;
+
+    // Shift last to front
+    ctx->regs.a |= (b << 7);
+
+    cpu_set_flags(ctx, ctx->regs.a == 0, 0, 0, b & 1);
+}
+
+// Rotate left
+static void proc_rla(cpu_context *ctx) {
+    u8 u = ctx->regs.a;
+    u8 cf = CPU_FLAG_C;
+    u8 c = (u >> 7) & 1;
+
+    ctx->regs.a = (u << 1) | cf;
+    cpu_set_flags(ctx, 0, 0, 0, c);
+    
+}
+
+// Rotate right
+static void proc_rra(cpu_context *ctx) {
+    u8 cf = CPU_FLAG_C;
+
+    // Is first bit set?
+    u8 new_cf = ctx->regs.a & 1;
+
+    ctx->regs.a >>= 1;
+    ctx->regs.a |= (cf << 7);
+
+    cpu_set_flags(ctx, 0, 0, 0, new_cf);
+}
+
+// Stop instruction
+static void proc_stop(cpu_context *ctx) {
+    fprintf(stderr, "STOPPING\n");
+    NO_IMPL
+}
+
+// Decimal adjust accumulator - Don't fully understand this
+static void proc_daa(cpu_context *ctx) {
+    u8 u = 0;
+    int cf = 0;
+
+    if (CPU_FLAG_H || (!CPU_FLAG_N && (ctx->regs.a & 0xF) > 9)) {
+        u = 6;
+    }
+
+    if (CPU_FLAG_C || (!CPU_FLAG_N && ctx->regs.a > 0x99)) {
+        u |= 0x60;
+        cf = 1;
+    }
+
+    ctx->regs.a += CPU_FLAG_N ? -u : u;
+
+    cpu_set_flags(ctx, ctx->regs.a == 0, -1, 0, cf);
+}
+
+// Complement accumulator
+static void proc_cpl(cpu_context *ctx) {
+    // Negate accumulator and set flags
+    ctx->regs.a = ~ctx->regs.a;
+    cpu_set_flags(ctx, 0, 1, 1, -1);
+}
+
+// Set carry flag
+static void proc_scf(cpu_context *ctx) {
+    cpu_set_flags(ctx, -1, 0, 0, 1);
+}
+
+// Complement carry flag
+static void proc_ccf(cpu_context *ctx) {
+    // Negate carry flag
+    cpu_set_flags(ctx, -1, 0, 0, CPU_FLAG_C ^ 1);
+}
+
+// Halt instruction
+static void proc_halt(cpu_context *ctx) {
+    ctx->halted = true;
+}
+
 // AND instruction
 static void proc_and(cpu_context *ctx) {
     ctx->regs.a &= ctx->fetched_data & 0xFF;
@@ -390,6 +485,11 @@ static void proc_di(cpu_context *ctx) {
     ctx->interrupt_master_enabled = false;
 }
 
+// Enable interrupts
+static void proc_ei(cpu_context *ctx) {
+    ctx->enabling_ime = true;
+}
+
 // Increment register
 static void proc_inc(cpu_context *ctx) {
     u16 val = cpu_read_reg(ctx->curr_instr->reg_1) + 1;
@@ -549,6 +649,17 @@ static IN_PROC processors[] = {
     [IN_OR] = proc_or,
     [IN_CP] = proc_cp,
     [IN_CB] = proc_cb,
+    [IN_RLCA] = proc_rlca,
+    [IN_RRCA] = proc_rrca,
+    [IN_RLA] = proc_rla,
+    [IN_RRA] = proc_rra,
+    [IN_STOP] = proc_stop,
+    [IN_HALT] = proc_halt,
+    [IN_DAA] = proc_daa,
+    [IN_CPL] = proc_cpl,
+    [IN_SCF] = proc_scf,
+    [IN_CCF] = proc_ccf,
+    [IN_EI] = proc_ei,
     [IN_RETI] = proc_reti,
 };
 

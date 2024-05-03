@@ -32,9 +32,14 @@ typedef struct {
     bool stepping;
 
     bool interrupt_master_enabled;
+    bool enabling_ime;
     u8 ie_register;
+    u8 int_flags;
 
 } cpu_context;
+
+// Gets the registers
+cpu_registers *cpu_get_regs();
 
 // Initializes the CPU
 void cpu_init();
@@ -51,6 +56,12 @@ IN_PROC inst_get_processor(in_type type);
 
 // Z Flag: Zero Flag
 #define CPU_FLAG_Z BIT(ctx->regs.f, 7)
+
+// N Flag: Subtract Flag
+#define CPU_FLAG_N BIT(ctx->regs.f, 6)
+
+// H Flag: Half Carry Flag
+#define CPU_FLAG_H BIT(ctx->regs.f, 5)
 
 // C Flag: Carry Flag
 #define CPU_FLAG_C BIT(ctx->regs.f, 4)
@@ -73,5 +84,8 @@ u8 cpu_get_ie_register();
 // Sets the interrupt enable register
 void cpu_set_ie_register(u8 n);
 
-// Gets the registers
-cpu_registers *cpu_get_regs();
+// Gets the interrupt flags
+u8 cpu_get_int_flags();
+
+// Sets the interrupt flags
+void cpu_set_int_flags(u8 n);

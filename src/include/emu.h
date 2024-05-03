@@ -6,6 +6,7 @@ typedef struct {
     bool paused;
     bool running;
     u64 ticks;
+    bool die;
 } emu_context;
 
 // Initializes and runs the emulator
