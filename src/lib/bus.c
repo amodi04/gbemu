@@ -2,6 +2,7 @@
 #include <cart.h>
 #include <ram.h>
 #include <cpu.h>
+#include <io.h>
 
 // 0x0000 - 0x3FFF: 16KB ROM bank 00 (in cartridge, fixed at bank 00)
 // 0x4000 - 0x7FFF: 16KB ROM Bank 01..NN (in cartridge, switchable bank number)
@@ -46,10 +47,7 @@ u8 bus_read(u16 address) {
         return 0;
     } else if (address < 0xFF80) {
         // I/O Registers
-        // TODO
-        printf("Unsupported bus_read(0x%04X)\n", address);
-        // NO_IMPL
-        return 0x0;
+        return io_read(address);
     } else if (address == 0xFFFF) {
         // CPU Interrupt Enable Register
         return cpu_get_ie_register();
@@ -84,9 +82,7 @@ void bus_write(u16 address, u8 value) {
         // Not Usable
     } else if (address < 0xFF80) {
         // I/O Registers
-        // TODO
-        printf("Unsupported bus_write(0x%04X, 0x%02X)\n", address, value);
-        // NO_IMPL
+        io_write(address, value);
     } else if (address == 0xFFFF) {
         // CPU Interrupt Enable Register
         cpu_set_ie_register(value);

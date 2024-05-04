@@ -617,7 +617,7 @@ static void proc_add(cpu_context *ctx) {
         h = (cpu_read_reg(ctx->curr_instr->reg_1) & 0xF) + (ctx->fetched_data & 0xF) >= 0x10;
 
         // Carry if 0x100 because we are adding a signed 8-bit value
-        c = (int)(cpu_read_reg(ctx->curr_instr->reg_1) & 0xFF) + (int)(ctx->fetched_data & 0xFF) > 0x100;
+        c = (int)(cpu_read_reg(ctx->curr_instr->reg_1) & 0xFF) + (int)(ctx->fetched_data & 0xFF) >= 0x100;
     }
 
     cpu_set_reg(ctx->curr_instr->reg_1, val & 0xFFFF);

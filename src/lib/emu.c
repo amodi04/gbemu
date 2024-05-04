@@ -3,6 +3,7 @@
 #include <cart.h>
 #include <cpu.h>
 #include <ui.h>
+#include <timer.h>
 
 //TODO Add Windows Alternative...
 #include <pthread.h>
@@ -27,6 +28,7 @@ emu_context *emu_get_context() {
 
 // Main CPU thread
 void *cpu_run(void *p) {
+    timer_init();
     cpu_init();
 
     ctx.running = true;
@@ -43,8 +45,6 @@ void *cpu_run(void *p) {
             printf("CPU Stopped\n");
             return 0;
         }
-
-        ctx.ticks++;
     }
 
     return 0;
@@ -83,4 +83,10 @@ int emu_run(int argc, char **argv) {
 
 void emu_cycles(int cpu_cycles) {
     //TODO...
+    int n = cpu_cycles * 4;
+
+    for (int i = 0; i < n; i++) {
+        ctx.ticks++;
+        timer_tick();
+    }
 }

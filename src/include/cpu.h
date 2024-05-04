@@ -89,3 +89,6 @@ u8 cpu_get_int_flags();
 
 // Sets the interrupt flags
 void cpu_set_int_flags(u8 n);
+
+// Converts an instruction to its string representation
+void instr_to_str(cpu_context *ctx, char *str);
